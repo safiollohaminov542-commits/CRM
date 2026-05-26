@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+*.pyo
+*.db
+real_estate_crm.db
+uploads/
+.env
+.venv
+venv/
+.DS_Store
