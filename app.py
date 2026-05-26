@@ -6125,6 +6125,765 @@ def uploaded_file(filename):
     return send_file(os.path.join('uploads', filename))
 
 
+# ============================================================
+# ===== СИСТЕМАИ ИПОТЕКА ВА РАССРОЧКА =====
+# ============================================================
+
+def init_ipoteka_rasrochka_tables():
+    """Эҷоди ҷадвалҳо барои Ипотека ва Рассрочка"""
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    # ===== Ҷадвали Бонкҳо =====
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS banks (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            slug TEXT UNIQUE NOT NULL,
+            logo TEXT,
+            description TEXT,
+            order_index INTEGER DEFAULT 0,
+            is_active INTEGER DEFAULT 1,
+            created_date TEXT,
+            updated_date TEXT
+        )
+    ''')
+    
+    # ===== Ҷадвали Шартҳои ипотека =====
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS mortgage_conditions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            bank_id INTEGER NOT NULL,
+            currency TEXT NOT NULL DEFAULT 'TJS',
+            interest_yearly REAL DEFAULT 0,
+            interest_monthly REAL DEFAULT 0,
+            min_amount REAL DEFAULT 0,
+            max_amount REAL DEFAULT 0,
+            min_months INTEGER DEFAULT 12,
+            max_months INTEGER DEFAULT 240,
+            down_payment_percent REAL DEFAULT 30,
+            guarantor_required INTEGER DEFAULT 0,
+            collateral_required INTEGER DEFAULT 0,
+            extra_conditions TEXT,
+            created_date TEXT,
+            updated_date TEXT,
+            FOREIGN KEY (bank_id) REFERENCES banks (id) ON DELETE CASCADE
+        )
+    ''')
+    
+    # ===== Ҷадвали Объектҳои рассрочка =====
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS installment_objects (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            slug TEXT UNIQUE NOT NULL,
+            image TEXT,
+            description TEXT,
+            address TEXT,
+            developer TEXT,
+            order_index INTEGER DEFAULT 0,
+            is_active INTEGER DEFAULT 1,
+            created_date TEXT,
+            updated_date TEXT
+        )
+    ''')
+    
+    # ===== Ҷадвали Шартҳои рассрочка =====
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS installment_conditions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            object_id INTEGER NOT NULL,
+            title TEXT,
+            currency TEXT DEFAULT 'TJS',
+            min_price REAL DEFAULT 0,
+            max_price REAL DEFAULT 0,
+            down_payment_percent REAL DEFAULT 30,
+            months INTEGER DEFAULT 12,
+            monthly_payment_rule TEXT,
+            interest_percent REAL DEFAULT 0,
+            extra_conditions TEXT,
+            created_date TEXT,
+            updated_date TEXT,
+            FOREIGN KEY (object_id) REFERENCES installment_objects (id) ON DELETE CASCADE
+        )
+    ''')
+    
+    conn.commit()
+    conn.close()
+    print("✅ Ҷадвалҳои Ипотека ва Рассрочка тайёр шуданд")
+
+
+# Эҷоди ҷадвалҳо ҳангоми оғоз
+try:
+    init_ipoteka_rasrochka_tables()
+except Exception as e:
+    print(f"⚠️ Хатогӣ дар эҷоди ҷадвалҳои Ипотека/Рассрочка: {e}")
+
+
+def make_slug(text):
+    """Сохтани slug аз матн"""
+    import re
+    if not text:
+        return ''
+    text = str(text).lower().strip()
+    # Транслитератсияи кирилл/тоҷикӣ
+    translit_map = {
+        'а':'a','б':'b','в':'v','г':'g','д':'d','е':'e','ё':'yo','ж':'zh','з':'z',
+        'и':'i','й':'y','к':'k','л':'l','м':'m','н':'n','о':'o','п':'p','р':'r',
+        'с':'s','т':'t','у':'u','ф':'f','х':'kh','ц':'ts','ч':'ch','ш':'sh','щ':'sh',
+        'ъ':'','ы':'y','ь':'','э':'e','ю':'yu','я':'ya',
+        'ғ':'gh','ӣ':'i','қ':'q','ӯ':'u','ҳ':'h','ҷ':'j'
+    }
+    result = ''
+    for ch in text:
+        result += translit_map.get(ch, ch)
+    result = re.sub(r'[^a-z0-9\s-]', '', result)
+    result = re.sub(r'[\s-]+', '-', result).strip('-')
+    return result or 'item'
+
+
+def ensure_unique_slug(table, slug, exclude_id=None):
+    """Танзими slug-и нодир"""
+    conn = get_db()
+    base = slug
+    counter = 1
+    while True:
+        if exclude_id:
+            row = conn.execute(f'SELECT id FROM {table} WHERE slug = ? AND id != ?', (slug, exclude_id)).fetchone()
+        else:
+            row = conn.execute(f'SELECT id FROM {table} WHERE slug = ?', (slug,)).fetchone()
+        if not row:
+            conn.close()
+            return slug
+        counter += 1
+        slug = f"{base}-{counter}"
+
+
+# ============================================================
+# ===== ROUTES — САҲИФАҲО =====
+# ============================================================
+
+@app.route('/ipoteka')
+@app.route('/ipoteka.html')
+@login_required
+def ipoteka_page():
+    """Саҳифаи асосии ипотека - рӯйхати бонкҳо"""
+    return render_template('ipoteka.html')
+
+
+@app.route('/ipoteka/<slug>')
+@app.route('/ipoteka.html/<slug>')
+@login_required
+def ipoteka_bank_page(slug):
+    """Саҳифаи бонки алоҳида"""
+    conn = get_db()
+    bank = conn.execute('SELECT * FROM banks WHERE slug = ? AND is_active = 1', (slug,)).fetchone()
+    conn.close()
+    if not bank:
+        return render_template('ipoteka_bank.html', bank=None, slug=slug), 404
+    return render_template('ipoteka_bank.html', bank=dict(bank), slug=slug)
+
+
+@app.route('/rasrochka')
+@app.route('/rasrochka.html')
+@login_required
+def rasrochka_page():
+    """Саҳифаи асосии рассрочка - рӯйхати объектҳо"""
+    return render_template('rasrochka.html')
+
+
+@app.route('/rasrochka/<slug>')
+@app.route('/rasrochka.html/<slug>')
+@login_required
+def rasrochka_object_page(slug):
+    """Саҳифаи объекти алоҳида"""
+    conn = get_db()
+    obj = conn.execute('SELECT * FROM installment_objects WHERE slug = ? AND is_active = 1', (slug,)).fetchone()
+    conn.close()
+    if not obj:
+        return render_template('rasrochka_object.html', obj=None, slug=slug), 404
+    return render_template('rasrochka_object.html', obj=dict(obj), slug=slug)
+
+
+@app.route('/admin/ipoteka')
+@login_required
+@admin_required
+def admin_ipoteka_page():
+    """Панели админ барои Ипотека"""
+    return render_template('admin_ipoteka.html')
+
+
+@app.route('/admin/rasrochka')
+@login_required
+@admin_required
+def admin_rasrochka_page():
+    """Панели админ барои Рассрочка"""
+    return render_template('admin_rasrochka.html')
+
+
+# ============================================================
+# ===== API: БОНКҲО (CRUD) =====
+# ============================================================
+
+@app.route('/api/banks', methods=['GET'])
+@login_required
+def api_get_banks():
+    """Гирифтани ҳамаи бонкҳо бо шартҳои онҳо"""
+    conn = get_db()
+    try:
+        banks = conn.execute('''
+            SELECT * FROM banks 
+            WHERE is_active = 1 
+            ORDER BY order_index ASC, id ASC
+        ''').fetchall()
+        result = []
+        for bank in banks:
+            bank_dict = dict(bank)
+            conditions = conn.execute('''
+                SELECT * FROM mortgage_conditions WHERE bank_id = ?
+            ''', (bank['id'],)).fetchall()
+            bank_dict['conditions'] = [dict(c) for c in conditions]
+            result.append(bank_dict)
+        return jsonify(result)
+    except Exception as e:
+        print(f"Error api_get_banks: {e}")
+        return jsonify([])
+    finally:
+        conn.close()
+
+
+@app.route('/api/banks/<int:bank_id>', methods=['GET'])
+@login_required
+def api_get_bank(bank_id):
+    """Гирифтани як бонк"""
+    conn = get_db()
+    try:
+        bank = conn.execute('SELECT * FROM banks WHERE id = ?', (bank_id,)).fetchone()
+        if not bank:
+            return jsonify({'error': 'Бонк ёфт нашуд'}), 404
+        bank_dict = dict(bank)
+        conditions = conn.execute('SELECT * FROM mortgage_conditions WHERE bank_id = ?', (bank_id,)).fetchall()
+        bank_dict['conditions'] = [dict(c) for c in conditions]
+        return jsonify(bank_dict)
+    finally:
+        conn.close()
+
+
+@app.route('/api/banks/by-slug/<slug>', methods=['GET'])
+@login_required
+def api_get_bank_by_slug(slug):
+    """Гирифтани бонк бо slug"""
+    conn = get_db()
+    try:
+        bank = conn.execute('SELECT * FROM banks WHERE slug = ?', (slug,)).fetchone()
+        if not bank:
+            return jsonify({'error': 'Бонк ёфт нашуд'}), 404
+        bank_dict = dict(bank)
+        conditions = conn.execute('SELECT * FROM mortgage_conditions WHERE bank_id = ?', (bank['id'],)).fetchall()
+        bank_dict['conditions'] = [dict(c) for c in conditions]
+        return jsonify(bank_dict)
+    finally:
+        conn.close()
+
+
+@app.route('/api/banks', methods=['POST'])
+@login_required
+@admin_required
+def api_create_bank():
+    """Сохтани бонки нав"""
+    name = request.form.get('name', '').strip()
+    description = request.form.get('description', '').strip()
+    custom_slug = request.form.get('slug', '').strip()
+    
+    if not name:
+        return jsonify({'success': False, 'error': 'Номи бонк лозим аст'}), 400
+    
+    slug = make_slug(custom_slug or name)
+    slug = ensure_unique_slug('banks', slug)
+    
+    # Боргузории логотип
+    logo_path = ''
+    if 'logo' in request.files:
+        file = request.files['logo']
+        if file and file.filename:
+            filename = secure_filename(f"bank_{datetime.now().timestamp()}_{file.filename}")
+            upload_dir = os.path.join('uploads', 'banks')
+            os.makedirs(upload_dir, exist_ok=True)
+            filepath = os.path.join(upload_dir, filename)
+            file.save(filepath)
+            logo_path = f'/uploads/banks/{filename}'
+    
+    conn = get_db()
+    try:
+        max_order = conn.execute('SELECT COALESCE(MAX(order_index), -1) as m FROM banks').fetchone()
+        order_index = (max_order['m'] or -1) + 1
+        
+        cursor = conn.execute('''
+            INSERT INTO banks (name, slug, logo, description, order_index, is_active, created_date, updated_date)
+            VALUES (?, ?, ?, ?, ?, 1, ?, ?)
+        ''', (name, slug, logo_path, description, order_index,
+              datetime.now().isoformat(), datetime.now().isoformat()))
+        conn.commit()
+        return jsonify({'success': True, 'id': cursor.lastrowid, 'slug': slug})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+    finally:
+        conn.close()
+
+
+@app.route('/api/banks/<int:bank_id>', methods=['PUT'])
+@login_required
+@admin_required
+def api_update_bank(bank_id):
+    """Таҳрири бонк"""
+    name = request.form.get('name', '').strip()
+    description = request.form.get('description', '').strip()
+    custom_slug = request.form.get('slug', '').strip()
+    
+    if not name:
+        return jsonify({'success': False, 'error': 'Номи бонк лозим аст'}), 400
+    
+    conn = get_db()
+    try:
+        existing = conn.execute('SELECT * FROM banks WHERE id = ?', (bank_id,)).fetchone()
+        if not existing:
+            return jsonify({'success': False, 'error': 'Бонк ёфт нашуд'}), 404
+        
+        # Slug
+        if custom_slug:
+            slug = make_slug(custom_slug)
+            slug = ensure_unique_slug('banks', slug, exclude_id=bank_id)
+        else:
+            slug = existing['slug']
+        
+        # Logo
+        logo_path = existing['logo']
+        if 'logo' in request.files:
+            file = request.files['logo']
+            if file and file.filename:
+                filename = secure_filename(f"bank_{datetime.now().timestamp()}_{file.filename}")
+                upload_dir = os.path.join('uploads', 'banks')
+                os.makedirs(upload_dir, exist_ok=True)
+                filepath = os.path.join(upload_dir, filename)
+                file.save(filepath)
+                logo_path = f'/uploads/banks/{filename}'
+        
+        conn.execute('''
+            UPDATE banks SET name = ?, slug = ?, logo = ?, description = ?, updated_date = ?
+            WHERE id = ?
+        ''', (name, slug, logo_path, description, datetime.now().isoformat(), bank_id))
+        conn.commit()
+        return jsonify({'success': True, 'slug': slug})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+    finally:
+        conn.close()
+
+
+@app.route('/api/banks/<int:bank_id>', methods=['DELETE'])
+@login_required
+@admin_required
+def api_delete_bank(bank_id):
+    """Нест кардани бонк"""
+    conn = get_db()
+    try:
+        conn.execute('DELETE FROM mortgage_conditions WHERE bank_id = ?', (bank_id,))
+        conn.execute('DELETE FROM banks WHERE id = ?', (bank_id,))
+        conn.commit()
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+    finally:
+        conn.close()
+
+
+# ===== ШАРТҲОИ ИПОТЕКА =====
+
+@app.route('/api/banks/<int:bank_id>/conditions', methods=['GET'])
+@login_required
+def api_get_bank_conditions(bank_id):
+    """Гирифтани шартҳои бонк"""
+    conn = get_db()
+    try:
+        rows = conn.execute('SELECT * FROM mortgage_conditions WHERE bank_id = ?', (bank_id,)).fetchall()
+        return jsonify([dict(r) for r in rows])
+    finally:
+        conn.close()
+
+
+@app.route('/api/banks/<int:bank_id>/conditions', methods=['POST'])
+@login_required
+@admin_required
+def api_create_bank_condition(bank_id):
+    """Илова кардани шарти ипотека"""
+    data = request.json or {}
+    conn = get_db()
+    try:
+        cursor = conn.execute('''
+            INSERT INTO mortgage_conditions (
+                bank_id, currency, interest_yearly, interest_monthly,
+                min_amount, max_amount, min_months, max_months,
+                down_payment_percent, guarantor_required, collateral_required,
+                extra_conditions, created_date, updated_date
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            bank_id,
+            data.get('currency', 'TJS'),
+            float(data.get('interest_yearly', 0) or 0),
+            float(data.get('interest_monthly', 0) or 0),
+            float(data.get('min_amount', 0) or 0),
+            float(data.get('max_amount', 0) or 0),
+            int(data.get('min_months', 12) or 12),
+            int(data.get('max_months', 240) or 240),
+            float(data.get('down_payment_percent', 30) or 30),
+            1 if data.get('guarantor_required') else 0,
+            1 if data.get('collateral_required') else 0,
+            data.get('extra_conditions', ''),
+            datetime.now().isoformat(),
+            datetime.now().isoformat()
+        ))
+        conn.commit()
+        return jsonify({'success': True, 'id': cursor.lastrowid})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+    finally:
+        conn.close()
+
+
+@app.route('/api/conditions/<int:condition_id>', methods=['PUT'])
+@login_required
+@admin_required
+def api_update_bank_condition(condition_id):
+    """Таҳрири шарт"""
+    data = request.json or {}
+    conn = get_db()
+    try:
+        conn.execute('''
+            UPDATE mortgage_conditions SET
+                currency = ?, interest_yearly = ?, interest_monthly = ?,
+                min_amount = ?, max_amount = ?, min_months = ?, max_months = ?,
+                down_payment_percent = ?, guarantor_required = ?, collateral_required = ?,
+                extra_conditions = ?, updated_date = ?
+            WHERE id = ?
+        ''', (
+            data.get('currency', 'TJS'),
+            float(data.get('interest_yearly', 0) or 0),
+            float(data.get('interest_monthly', 0) or 0),
+            float(data.get('min_amount', 0) or 0),
+            float(data.get('max_amount', 0) or 0),
+            int(data.get('min_months', 12) or 12),
+            int(data.get('max_months', 240) or 240),
+            float(data.get('down_payment_percent', 30) or 30),
+            1 if data.get('guarantor_required') else 0,
+            1 if data.get('collateral_required') else 0,
+            data.get('extra_conditions', ''),
+            datetime.now().isoformat(),
+            condition_id
+        ))
+        conn.commit()
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+    finally:
+        conn.close()
+
+
+@app.route('/api/conditions/<int:condition_id>', methods=['DELETE'])
+@login_required
+@admin_required
+def api_delete_bank_condition(condition_id):
+    """Нест кардани шарт"""
+    conn = get_db()
+    try:
+        conn.execute('DELETE FROM mortgage_conditions WHERE id = ?', (condition_id,))
+        conn.commit()
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+    finally:
+        conn.close()
+
+
+# ============================================================
+# ===== API: ОБЪЕКТҲОИ РАССРОЧКА (CRUD) =====
+# ============================================================
+
+@app.route('/api/installment-objects', methods=['GET'])
+@login_required
+def api_get_installment_objects():
+    """Гирифтани ҳамаи объектҳои рассрочка"""
+    conn = get_db()
+    try:
+        objects = conn.execute('''
+            SELECT * FROM installment_objects 
+            WHERE is_active = 1 
+            ORDER BY order_index ASC, id ASC
+        ''').fetchall()
+        result = []
+        for obj in objects:
+            obj_dict = dict(obj)
+            conditions = conn.execute('''
+                SELECT * FROM installment_conditions WHERE object_id = ?
+            ''', (obj['id'],)).fetchall()
+            obj_dict['conditions'] = [dict(c) for c in conditions]
+            result.append(obj_dict)
+        return jsonify(result)
+    except Exception as e:
+        print(f"Error api_get_installment_objects: {e}")
+        return jsonify([])
+    finally:
+        conn.close()
+
+
+@app.route('/api/installment-objects/<int:obj_id>', methods=['GET'])
+@login_required
+def api_get_installment_object(obj_id):
+    """Гирифтани як объект"""
+    conn = get_db()
+    try:
+        obj = conn.execute('SELECT * FROM installment_objects WHERE id = ?', (obj_id,)).fetchone()
+        if not obj:
+            return jsonify({'error': 'Объект ёфт нашуд'}), 404
+        obj_dict = dict(obj)
+        conditions = conn.execute('SELECT * FROM installment_conditions WHERE object_id = ?', (obj_id,)).fetchall()
+        obj_dict['conditions'] = [dict(c) for c in conditions]
+        return jsonify(obj_dict)
+    finally:
+        conn.close()
+
+
+@app.route('/api/installment-objects/by-slug/<slug>', methods=['GET'])
+@login_required
+def api_get_installment_object_by_slug(slug):
+    """Гирифтани объект бо slug"""
+    conn = get_db()
+    try:
+        obj = conn.execute('SELECT * FROM installment_objects WHERE slug = ?', (slug,)).fetchone()
+        if not obj:
+            return jsonify({'error': 'Объект ёфт нашуд'}), 404
+        obj_dict = dict(obj)
+        conditions = conn.execute('SELECT * FROM installment_conditions WHERE object_id = ?', (obj['id'],)).fetchall()
+        obj_dict['conditions'] = [dict(c) for c in conditions]
+        return jsonify(obj_dict)
+    finally:
+        conn.close()
+
+
+@app.route('/api/installment-objects', methods=['POST'])
+@login_required
+@admin_required
+def api_create_installment_object():
+    """Сохтани объекти нав"""
+    name = request.form.get('name', '').strip()
+    description = request.form.get('description', '').strip()
+    address = request.form.get('address', '').strip()
+    developer = request.form.get('developer', '').strip()
+    custom_slug = request.form.get('slug', '').strip()
+    
+    if not name:
+        return jsonify({'success': False, 'error': 'Номи объект лозим аст'}), 400
+    
+    slug = make_slug(custom_slug or name)
+    slug = ensure_unique_slug('installment_objects', slug)
+    
+    # Боргузории расм
+    image_path = ''
+    if 'image' in request.files:
+        file = request.files['image']
+        if file and file.filename:
+            filename = secure_filename(f"obj_{datetime.now().timestamp()}_{file.filename}")
+            upload_dir = os.path.join('uploads', 'installment')
+            os.makedirs(upload_dir, exist_ok=True)
+            filepath = os.path.join(upload_dir, filename)
+            file.save(filepath)
+            image_path = f'/uploads/installment/{filename}'
+    
+    conn = get_db()
+    try:
+        max_order = conn.execute('SELECT COALESCE(MAX(order_index), -1) as m FROM installment_objects').fetchone()
+        order_index = (max_order['m'] or -1) + 1
+        
+        cursor = conn.execute('''
+            INSERT INTO installment_objects (name, slug, image, description, address, developer, order_index, is_active, created_date, updated_date)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
+        ''', (name, slug, image_path, description, address, developer, order_index,
+              datetime.now().isoformat(), datetime.now().isoformat()))
+        conn.commit()
+        return jsonify({'success': True, 'id': cursor.lastrowid, 'slug': slug})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+    finally:
+        conn.close()
+
+
+@app.route('/api/installment-objects/<int:obj_id>', methods=['PUT'])
+@login_required
+@admin_required
+def api_update_installment_object(obj_id):
+    """Таҳрири объект"""
+    name = request.form.get('name', '').strip()
+    description = request.form.get('description', '').strip()
+    address = request.form.get('address', '').strip()
+    developer = request.form.get('developer', '').strip()
+    custom_slug = request.form.get('slug', '').strip()
+    
+    if not name:
+        return jsonify({'success': False, 'error': 'Номи объект лозим аст'}), 400
+    
+    conn = get_db()
+    try:
+        existing = conn.execute('SELECT * FROM installment_objects WHERE id = ?', (obj_id,)).fetchone()
+        if not existing:
+            return jsonify({'success': False, 'error': 'Объект ёфт нашуд'}), 404
+        
+        if custom_slug:
+            slug = make_slug(custom_slug)
+            slug = ensure_unique_slug('installment_objects', slug, exclude_id=obj_id)
+        else:
+            slug = existing['slug']
+        
+        image_path = existing['image']
+        if 'image' in request.files:
+            file = request.files['image']
+            if file and file.filename:
+                filename = secure_filename(f"obj_{datetime.now().timestamp()}_{file.filename}")
+                upload_dir = os.path.join('uploads', 'installment')
+                os.makedirs(upload_dir, exist_ok=True)
+                filepath = os.path.join(upload_dir, filename)
+                file.save(filepath)
+                image_path = f'/uploads/installment/{filename}'
+        
+        conn.execute('''
+            UPDATE installment_objects SET 
+                name = ?, slug = ?, image = ?, description = ?, address = ?, developer = ?, updated_date = ?
+            WHERE id = ?
+        ''', (name, slug, image_path, description, address, developer, datetime.now().isoformat(), obj_id))
+        conn.commit()
+        return jsonify({'success': True, 'slug': slug})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+    finally:
+        conn.close()
+
+
+@app.route('/api/installment-objects/<int:obj_id>', methods=['DELETE'])
+@login_required
+@admin_required
+def api_delete_installment_object(obj_id):
+    """Нест кардани объект"""
+    conn = get_db()
+    try:
+        conn.execute('DELETE FROM installment_conditions WHERE object_id = ?', (obj_id,))
+        conn.execute('DELETE FROM installment_objects WHERE id = ?', (obj_id,))
+        conn.commit()
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+    finally:
+        conn.close()
+
+
+# ===== ШАРТҲОИ РАССРОЧКА =====
+
+@app.route('/api/installment-objects/<int:obj_id>/conditions', methods=['GET'])
+@login_required
+def api_get_installment_conditions(obj_id):
+    """Гирифтани шартҳои объект"""
+    conn = get_db()
+    try:
+        rows = conn.execute('SELECT * FROM installment_conditions WHERE object_id = ?', (obj_id,)).fetchall()
+        return jsonify([dict(r) for r in rows])
+    finally:
+        conn.close()
+
+
+@app.route('/api/installment-objects/<int:obj_id>/conditions', methods=['POST'])
+@login_required
+@admin_required
+def api_create_installment_condition(obj_id):
+    """Илова кардани шарти рассрочка"""
+    data = request.json or {}
+    conn = get_db()
+    try:
+        cursor = conn.execute('''
+            INSERT INTO installment_conditions (
+                object_id, title, currency, min_price, max_price,
+                down_payment_percent, months, monthly_payment_rule,
+                interest_percent, extra_conditions, created_date, updated_date
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            obj_id,
+            data.get('title', ''),
+            data.get('currency', 'TJS'),
+            float(data.get('min_price', 0) or 0),
+            float(data.get('max_price', 0) or 0),
+            float(data.get('down_payment_percent', 30) or 30),
+            int(data.get('months', 12) or 12),
+            data.get('monthly_payment_rule', ''),
+            float(data.get('interest_percent', 0) or 0),
+            data.get('extra_conditions', ''),
+            datetime.now().isoformat(),
+            datetime.now().isoformat()
+        ))
+        conn.commit()
+        return jsonify({'success': True, 'id': cursor.lastrowid})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+    finally:
+        conn.close()
+
+
+@app.route('/api/installment-conditions/<int:condition_id>', methods=['PUT'])
+@login_required
+@admin_required
+def api_update_installment_condition(condition_id):
+    """Таҳрири шарти рассрочка"""
+    data = request.json or {}
+    conn = get_db()
+    try:
+        conn.execute('''
+            UPDATE installment_conditions SET
+                title = ?, currency = ?, min_price = ?, max_price = ?,
+                down_payment_percent = ?, months = ?, monthly_payment_rule = ?,
+                interest_percent = ?, extra_conditions = ?, updated_date = ?
+            WHERE id = ?
+        ''', (
+            data.get('title', ''),
+            data.get('currency', 'TJS'),
+            float(data.get('min_price', 0) or 0),
+            float(data.get('max_price', 0) or 0),
+            float(data.get('down_payment_percent', 30) or 30),
+            int(data.get('months', 12) or 12),
+            data.get('monthly_payment_rule', ''),
+            float(data.get('interest_percent', 0) or 0),
+            data.get('extra_conditions', ''),
+            datetime.now().isoformat(),
+            condition_id
+        ))
+        conn.commit()
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+    finally:
+        conn.close()
+
+
+@app.route('/api/installment-conditions/<int:condition_id>', methods=['DELETE'])
+@login_required
+@admin_required
+def api_delete_installment_condition(condition_id):
+    """Нест кардани шарт"""
+    conn = get_db()
+    try:
+        conn.execute('DELETE FROM installment_conditions WHERE id = ?', (condition_id,))
+        conn.commit()
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+    finally:
+        conn.close()
+
+
 if __name__ == '__main__':
     init_db()
     print("=" * 50)
@@ -6136,5 +6895,9 @@ if __name__ == '__main__':
     print("  - http://127.0.0.1:5000/zayavka")
     print("  - http://127.0.0.1:5000/chat")
     print("  - http://127.0.0.1:5000/posts")
+    print("  - http://127.0.0.1:5000/ipoteka")
+    print("  - http://127.0.0.1:5000/rasrochka")
+    print("  - http://127.0.0.1:5000/admin/ipoteka")
+    print("  - http://127.0.0.1:5000/admin/rasrochka")
     print("=" * 50)
     app.run(debug=True, host='0.0.0.0', port=80)
