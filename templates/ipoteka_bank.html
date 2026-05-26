@@ -536,7 +536,7 @@
                 </div>
 
                 <div class="calc-row">
-                    <label>Авансия (% аз нархи манзил)</label>
+                    <label>Пешпардохт (% аз нархи манзил)</label>
                     <div class="calc-input-group">
                         <input type="number" id="calcDown" placeholder="30" min="0" max="100" step="0.1" required>
                         <span class="suffix">%</span>
@@ -578,7 +578,7 @@
                         <div class="val" id="resultLoan">0</div>
                     </div>
                     <div>
-                        <div class="lbl">Авансия</div>
+                        <div class="lbl">Пешпардохт</div>
                         <div class="val" id="resultDown">0</div>
                     </div>
                     <div>
@@ -684,7 +684,7 @@ function renderStats() {
     cards.push(`
         <div class="stat-mini-card">
             <div class="stat-mini-icon"><i class="fas fa-percent"></i></div>
-            <div class="stat-mini-label">Авансия аз</div>
+            <div class="stat-mini-label">Пешпардохт аз</div>
             <div class="stat-mini-value">${c.down_payment_percent}<span class="stat-mini-suffix">%</span></div>
         </div>
     `);
@@ -731,7 +731,7 @@ function renderConditions() {
                 </div>
                 <div class="condition-grid">
                     <div><span class="label">Фоизи моҳона:</span><span class="value">${c.interest_monthly}%</span></div>
-                    <div><span class="label">Авансия:</span><span class="value">${c.down_payment_percent}%</span></div>
+                    <div><span class="label">Пешпардохт:</span><span class="value">${c.down_payment_percent}%</span></div>
                     <div><span class="label">Мӯҳлат:</span><span class="value">${c.min_months}-${c.max_months} моҳ</span></div>
                     <div><span class="label">Маблағи қарз:</span><span class="value">${fmt(c.min_amount)}-${fmt(c.max_amount)} ${sym}</span></div>
                 </div>
@@ -844,7 +844,7 @@ function calculateMortgage(e) {
         warnings.push(`Мӯҳлат аз максимуми бонк (${activeCondition.max_months} моҳ) зиёдтар аст`);
     }
     if (downPct < activeCondition.down_payment_percent) {
-        warnings.push(`Авансия бояд на камтар аз ${activeCondition.down_payment_percent}% бошад`);
+        warnings.push(`Пешпардохт бояд на камтар аз ${activeCondition.down_payment_percent}% бошад`);
     }
     if (warnings.length) {
         showWarning(warnings.join(' • '));

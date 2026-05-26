@@ -555,7 +555,7 @@
                 </div>
 
                 <div class="calc-row">
-                    <label>Авансия (% аз нархи объект)</label>
+                    <label>Пешпардохт (% аз нархи объект)</label>
                     <div class="calc-input-group">
                         <input type="number" id="calcDown" placeholder="30" min="0" max="100" step="0.1" required>
                         <span class="suffix">%</span>
@@ -593,7 +593,7 @@
                 <div class="calc-result-value" id="resultMonthly">0</div>
                 <div class="calc-result-grid">
                     <div>
-                        <div class="lbl">Авансия</div>
+                        <div class="lbl">Пешпардохт</div>
                         <div class="val" id="resultDown">0</div>
                     </div>
                     <div>
@@ -670,7 +670,7 @@ function renderStats() {
     const cards = [
         `<div class="stat-mini-card">
             <div class="stat-mini-icon"><i class="fas fa-percent"></i></div>
-            <div class="stat-mini-label">Авансия аз</div>
+            <div class="stat-mini-label">Пешпардохт аз</div>
             <div class="stat-mini-value">${c.down_payment_percent}<span class="stat-mini-suffix">%</span></div>
         </div>`,
         `<div class="stat-mini-card">
@@ -714,7 +714,7 @@ function renderConditions() {
                     <div class="condition-months-big">${c.months} моҳ</div>
                 </div>
                 <div class="condition-grid">
-                    <div><span class="label">Авансия:</span><span class="value">${c.down_payment_percent}%</span></div>
+                    <div><span class="label">Пешпардохт:</span><span class="value">${c.down_payment_percent}%</span></div>
                     <div><span class="label">Фоиз:</span><span class="value">${c.interest_percent}%</span></div>
                     <div><span class="label">Нархи мин.:</span><span class="value">${fmt(c.min_price)} ${sym}</span></div>
                     <div><span class="label">Нархи макс.:</span><span class="value">${c.max_price > 0 ? fmt(c.max_price) + ' ' + sym : '—'}</span></div>
@@ -738,7 +738,7 @@ function fillConditionSelect() {
     }
     sel.innerHTML = objConditions.map((c, i) => {
         const title = c.title || `Шарти ${i + 1}`;
-        return `<option value="${i}">${escapeHtml(title)} — ${c.months} моҳ, авансия ${c.down_payment_percent}%</option>`;
+        return `<option value="${i}">${escapeHtml(title)} — ${c.months} моҳ, пешпардохт ${c.down_payment_percent}%</option>`;
     }).join('');
     sel.selectedIndex = 0;
     onConditionChange();
@@ -823,7 +823,7 @@ function calculateInstallment(e) {
         warnings.push(`Нархи объект аз максимуми шарт (${fmt(activeCondition.max_price)}) зиёдтар аст`);
     }
     if (downPct < activeCondition.down_payment_percent) {
-        warnings.push(`Авансия бояд на камтар аз ${activeCondition.down_payment_percent}% бошад`);
+        warnings.push(`Пешпардохт бояд на камтар аз ${activeCondition.down_payment_percent}% бошад`);
     }
     if (warnings.length) {
         showWarning(warnings.join(' • '));

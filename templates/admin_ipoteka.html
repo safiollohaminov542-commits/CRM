@@ -669,7 +669,7 @@
                         <input type="number" id="condMaxMonths" min="1" placeholder="240" value="240">
                     </div>
                     <div class="field span2">
-                        <label>Авансия (% аз нархи манзил) *</label>
+                        <label>Пешпардохт (% аз нархи манзил) *</label>
                         <input type="number" id="condDownPayment" step="0.1" min="0" max="100" placeholder="30" required>
                     </div>
                     <div class="field span2">
@@ -776,7 +776,7 @@ function renderBanks() {
                         <div class="info">
                             <span><b>${c.interest_yearly}%</b> солона</span>
                             <span><b>${c.interest_monthly}%</b> моҳона</span>
-                            <span>Авансия: <b>${c.down_payment_percent}%</b></span>
+                            <span>Пешпардохт: <b>${c.down_payment_percent}%</b></span>
                             <span>Мӯҳлат: <b>${c.min_months}-${c.max_months} моҳ</b></span>
                             <span>Маблағ: <b>${fmt(c.min_amount)}-${fmt(c.max_amount)} ${sym}</b></span>
                         </div>
