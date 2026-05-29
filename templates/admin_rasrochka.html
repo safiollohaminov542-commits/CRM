@@ -642,8 +642,9 @@
                         <input type="number" id="condDownPayment" step="0.1" min="0" max="100" placeholder="30" value="30" required>
                     </div>
                     <div class="field">
-                        <label>Фоиз (% / сол)</label>
-                        <input type="number" id="condInterest" step="0.01" min="0" placeholder="0" value="0">
+                        <label>Пешпардохти минималӣ (бо валюта)</label>
+                        <input type="number" id="condInterest" step="1" min="0" placeholder="0" value="0">
+                        <small style="color:#777;font-size:11px;display:block;margin-top:4px;">Ҳадди ақали маблағи пешпардохт (масалан 5000)</small>
                     </div>
                     <div class="field">
                         <label>Нархи минималӣ</label>
@@ -751,9 +752,9 @@ function renderObjects() {
                         <span class="currency-tag ${isUSD ? 'usd' : ''}">${c.currency}</span>
                         <div class="info">
                             <span class="title">${escapeHtml(title)}</span>
-                            <span><b>${c.months}</b> моҳ</span>
                             <span>Пешпардохт: <b>${c.down_payment_percent}%</b></span>
-                            <span>Фоиз: <b>${c.interest_percent}%</b></span>
+                            <span><b>${c.months}</b> моҳ</span>
+                            <span>Пешп. мин.: <b>${fmt(c.interest_percent)} ${sym}</b></span>
                             <span>Нарх: <b>${fmt(c.min_price)}-${fmt(c.max_price)} ${sym}</b></span>
                         </div>
                         <div style="display:flex;gap:6px;">

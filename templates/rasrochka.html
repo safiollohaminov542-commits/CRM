@@ -580,7 +580,7 @@ function renderObjects(objects) {
                         </div>
                         <div class="obj-condition-grid">
                             <div><i class="fas fa-percent"></i> Пешпардохт: <b>${c.down_payment_percent}%</b></div>
-                            <div><i class="fas fa-coins"></i> Фоиз: <b>${c.interest_percent}%</b></div>
+                            <div><i class="fas fa-coins"></i> Пешп. мин.: <b>${fmt(c.interest_percent)} ${sym}</b></div>
                             <div><i class="fas fa-arrow-down"></i> Мин: <b>${fmt(c.min_price)} ${sym}</b></div>
                             <div><i class="fas fa-arrow-up"></i> Макс: <b>${c.max_price > 0 ? fmt(c.max_price) + ' ' + sym : '—'}</b></div>
                         </div>
