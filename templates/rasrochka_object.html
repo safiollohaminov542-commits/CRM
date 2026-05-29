@@ -603,10 +603,10 @@
                 </div>
 
                 <div class="calc-row">
-                    <label>Фоиз (агар бошад)</label>
+                    <label>Пешпардохти минималӣ (бо валюта)</label>
                     <div class="calc-input-group">
-                        <input type="number" id="calcInterest" placeholder="0" min="0" step="0.01" value="0">
-                        <span class="suffix">% / сол</span>
+                        <input type="number" id="calcInterest" placeholder="0" min="0" step="1" value="0">
+                        <span class="suffix" id="calcMinDownSuffix">сомонӣ</span>
                     </div>
                 </div>
 
@@ -699,6 +699,7 @@ function renderStats() {
         return;
     }
     const c = objConditions[0];
+    const sym0 = c.currency === 'USD' ? '$' : 'сом.';
     const cards = [
         `<div class="stat-mini-card">
             <div class="stat-mini-icon"><i class="fas fa-percent"></i></div>
@@ -712,8 +713,8 @@ function renderStats() {
         </div>`,
         `<div class="stat-mini-card">
             <div class="stat-mini-icon"><i class="fas fa-coins"></i></div>
-            <div class="stat-mini-label">Фоиз</div>
-            <div class="stat-mini-value">${c.interest_percent}<span class="stat-mini-suffix">%</span></div>
+            <div class="stat-mini-label">Пешп. минималӣ</div>
+            <div class="stat-mini-value">${fmt(c.interest_percent)}<span class="stat-mini-suffix">${sym0}</span></div>
         </div>`,
         `<div class="stat-mini-card">
             <div class="stat-mini-icon"><i class="fas fa-list-check"></i></div>
@@ -749,7 +750,7 @@ function renderConditions() {
                 </div>
                 <div class="condition-grid">
                     <div><span class="label">Пешпардохт:</span><span class="value">${c.down_payment_percent}%</span></div>
-                    <div><span class="label">Фоиз:</span><span class="value">${c.interest_percent}%</span></div>
+                    <div><span class="label">Пешп. мин.:</span><span class="value">${fmt(c.interest_percent)} ${sym}</span></div>
                     <div><span class="label">Нархи мин.:</span><span class="value">${fmt(c.min_price)} ${sym}</span></div>
                     <div><span class="label">Нархи макс.:</span><span class="value">${c.max_price > 0 ? fmt(c.max_price) + ' ' + sym : '—'}</span></div>
                 </div>
@@ -783,11 +784,14 @@ function onConditionChange() {
     if (isNaN(idx) || !objConditions[idx]) return;
     activeCondition = objConditions[idx];
 
-    document.getElementById('calcPriceSuffix').textContent =
-        activeCondition.currency === 'USD' ? '$' : 'сомонӣ';
+    const isUSD = activeCondition.currency === 'USD';
+    document.getElementById('calcPriceSuffix').textContent = isUSD ? '$' : 'сомонӣ';
+    const minDownSuf = document.getElementById('calcMinDownSuffix');
+    if (minDownSuf) minDownSuf.textContent = isUSD ? '$' : 'сомонӣ';
+
     document.getElementById('calcDown').value = activeCondition.down_payment_percent;
     document.getElementById('calcMonths').value = activeCondition.months;
-    document.getElementById('calcInterest').value = activeCondition.interest_percent;
+    document.getElementById('calcInterest').value = activeCondition.interest_percent || 0;
 
     if (!document.getElementById('calcPrice').value) {
         const suggest = activeCondition.min_price > 0 ? activeCondition.min_price : 100000;
@@ -819,12 +823,16 @@ function calculateInstallment(e) {
     const price = parseFloat(document.getElementById('calcPrice').value) || 0;
     const downPct = parseFloat(document.getElementById('calcDown').value) || 0;
     const months = parseInt(document.getElementById('calcMonths').value, 10) || 0;
-    const yearlyRate = parseFloat(document.getElementById('calcInterest').value) || 0;
+    const minDownAmount = parseFloat(document.getElementById('calcInterest').value) || 0;
 
     if (price <= 0) { showWarning('Нархи объектро ворид кунед'); return; }
     if (months <= 0) { showWarning('Мӯҳлатро ворид кунед'); return; }
 
-    const downAmount = price * downPct / 100;
+    let downAmount = price * downPct / 100;
+    // Tatbiqi peshpardokhti minimali: agar khurd boshad, ba min mebardorad
+    if (minDownAmount > 0 && downAmount < minDownAmount) {
+        downAmount = minDownAmount;
+    }
     const remaining = price - downAmount;
 
     if (remaining <= 0) {
@@ -832,21 +840,10 @@ function calculateInstallment(e) {
         return;
     }
 
-    let monthlyPayment, totalPayment, overpayment;
-
-    if (yearlyRate > 0) {
-        // Annuity formula with interest
-        const monthlyRate = yearlyRate / 100 / 12;
-        monthlyPayment = remaining * (monthlyRate * Math.pow(1 + monthlyRate, months))
-                        / (Math.pow(1 + monthlyRate, months) - 1);
-        totalPayment = monthlyPayment * months;
-        overpayment = totalPayment - remaining;
-    } else {
-        // Simple division - no interest
-        monthlyPayment = remaining / months;
-        totalPayment = remaining;
-        overpayment = 0;
-    }
+    // Soda - bo bekhtir foiz
+    const monthlyPayment = remaining / months;
+    const totalPayment = remaining;
+    const overpayment = 0;
 
     // Validations
     const warnings = [];
@@ -858,6 +855,10 @@ function calculateInstallment(e) {
     }
     if (downPct < activeCondition.down_payment_percent) {
         warnings.push(`Пешпардохт бояд на камтар аз ${activeCondition.down_payment_percent}% бошад`);
+    }
+    if (minDownAmount > 0 && (price * downPct / 100) < minDownAmount) {
+        const sym2 = activeCondition.currency === 'USD' ? '$' : 'сом.';
+        warnings.push(`Пешпардохт аз маблағи минималии ${fmt(minDownAmount)} ${sym2} камтар аст — ба ҳамин маблағ боло бардошта шуд`);
     }
     if (warnings.length) {
         showWarning(warnings.join(' • '));

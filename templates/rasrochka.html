@@ -142,8 +142,8 @@
     /* Objects grid */
     .objects-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-        gap: 22px;
+        grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+        gap: 24px;
     }
 
     .object-card {
@@ -252,17 +252,92 @@
 
     .object-conditions-row {
         display: flex;
-        flex-wrap: wrap;
-        gap: 6px;
+        flex-direction: column;
+        gap: 10px;
     }
 
-    .obj-chip {
+    .obj-condition {
         background: var(--green-soft);
+        border-left: 3px solid var(--green-primary);
+        border-radius: 12px;
+        padding: 12px 14px;
+    }
+
+    .obj-condition.usd {
+        background: #fef9e6;
+        border-left-color: #f59e0b;
+    }
+
+    .obj-condition-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-bottom: 8px;
+    }
+
+    .obj-condition-title {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-weight: 700;
+        font-size: 13px;
+        color: var(--text-dark);
+    }
+
+    .obj-condition-title .badge {
+        background: var(--green-primary);
+        color: white;
+        padding: 2px 9px;
+        border-radius: 12px;
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.3px;
+    }
+
+    .obj-condition.usd .obj-condition-title .badge {
+        background: #f59e0b;
+    }
+
+    .obj-condition-months {
+        font-size: 16px;
+        font-weight: 800;
         color: var(--green-primary);
-        padding: 5px 10px;
-        border-radius: 14px;
+    }
+
+    .obj-condition.usd .obj-condition-months {
+        color: #f59e0b;
+    }
+
+    .obj-condition-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 6px 12px;
+        font-size: 12px;
+    }
+
+    .obj-condition-grid > div {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        color: var(--text-medium);
+    }
+
+    .obj-condition-grid i {
+        color: var(--green-primary);
         font-size: 11px;
-        font-weight: 600;
+        width: 13px;
+        text-align: center;
+    }
+
+    .obj-condition.usd .obj-condition-grid i {
+        color: #f59e0b;
+    }
+
+    .obj-condition-grid b {
+        color: var(--text-dark);
+        font-weight: 700;
     }
 
     .object-card-cta {
@@ -484,15 +559,34 @@ function renderObjects(objects) {
 
     grid.innerHTML = objects.map(obj => {
         const conditions = obj.conditions || [];
-        const firstCond = conditions[0];
 
-        let chips = '';
-        if (firstCond) {
-            chips += `<span class="obj-chip"><i class="fas fa-percent"></i> Пешпардохт ${firstCond.down_payment_percent}%</span>`;
-            chips += `<span class="obj-chip"><i class="fas fa-calendar-days"></i> ${firstCond.months} моҳ</span>`;
-            if (firstCond.interest_percent > 0) {
-                chips += `<span class="obj-chip"><i class="fas fa-coins"></i> ${firstCond.interest_percent}%</span>`;
-            }
+        // Render full conditions block
+        let conditionsHtml = '';
+        if (conditions.length > 0) {
+            conditionsHtml = conditions.map((c, i) => {
+                const isUSD = c.currency === 'USD';
+                const sym = isUSD ? '$' : 'сом.';
+                const cls = isUSD ? 'obj-condition usd' : 'obj-condition';
+                const title = c.title || `Шарти ${i + 1}`;
+                return `
+                    <div class="${cls}">
+                        <div class="obj-condition-head">
+                            <span class="obj-condition-title">
+                                <i class="fas fa-${isUSD ? 'dollar-sign' : 'tag'}"></i>
+                                ${escapeHtml(title)}
+                                <span class="badge">${escapeHtml(c.currency || 'TJS')}</span>
+                            </span>
+                            <span class="obj-condition-months">${c.months} моҳ</span>
+                        </div>
+                        <div class="obj-condition-grid">
+                            <div><i class="fas fa-percent"></i> Пешпардохт: <b>${c.down_payment_percent}%</b></div>
+                            <div><i class="fas fa-coins"></i> Пешп. мин.: <b>${fmt(c.interest_percent)} ${sym}</b></div>
+                            <div><i class="fas fa-arrow-down"></i> Мин: <b>${fmt(c.min_price)} ${sym}</b></div>
+                            <div><i class="fas fa-arrow-up"></i> Макс: <b>${c.max_price > 0 ? fmt(c.max_price) + ' ' + sym : '—'}</b></div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
         }
 
         const imageHtml = obj.image
@@ -514,7 +608,7 @@ function renderObjects(objects) {
                         ${obj.developer ? `<span class="object-meta-item"><i class="fas fa-user-tie"></i> ${escapeHtml(obj.developer)}</span>` : ''}
                     </div>
                     ${obj.description ? `<div class="object-desc">${escapeHtml(obj.description)}</div>` : ''}
-                    ${chips ? `<div class="object-conditions-row">${chips}</div>` : ''}
+                    ${conditionsHtml ? `<div class="object-conditions-row">${conditionsHtml}</div>` : ''}
                     <div class="object-card-cta">
                         <div class="left">Шартҳо ва ҳисобкунак</div>
                         <div class="right">
