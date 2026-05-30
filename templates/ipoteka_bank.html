@@ -441,6 +441,128 @@
         display: flex;
     }
 
+    /* Months chips */
+    .months-chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 8px;
+    }
+
+    .month-chip {
+        padding: 5px 12px;
+        background: white;
+        border: 1.5px solid var(--border-soft);
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--text-medium);
+        cursor: pointer;
+        transition: all 0.15s;
+        user-select: none;
+    }
+
+    .month-chip:hover {
+        border-color: var(--green-primary);
+        color: var(--green-primary);
+    }
+
+    .month-chip.active {
+        background: var(--green-primary);
+        border-color: var(--green-primary);
+        color: white;
+    }
+
+    /* Result big cards (3 main metrics) */
+    .result-cards-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+    }
+
+    .result-card-big {
+        background: rgba(255,255,255,0.10);
+        border-radius: 12px;
+        padding: 12px 10px;
+        text-align: center;
+    }
+
+    .result-card-big.primary {
+        background: rgba(255,255,255,0.20);
+        border: 1px solid rgba(255,255,255,0.30);
+    }
+
+    .result-card-label {
+        font-size: 10.5px;
+        opacity: 0.85;
+        margin-bottom: 5px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        line-height: 1.25;
+    }
+
+    .result-card-value {
+        font-size: 17px;
+        font-weight: 800;
+        line-height: 1.15;
+    }
+
+    .result-card-big.primary .result-card-value {
+        font-size: 19px;
+    }
+
+    @media (max-width: 480px) {
+        .result-cards-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    /* Required documents block */
+    .docs-block {
+        background: #f0f9f3;
+        border-left: 4px solid var(--green-primary);
+        border-radius: 12px;
+        padding: 14px 16px;
+        margin-top: 12px;
+    }
+
+    .docs-block-title {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 700;
+        color: var(--text-dark);
+        margin-bottom: 10px;
+        font-size: 14px;
+    }
+
+    .docs-block-title i {
+        color: var(--green-primary);
+    }
+
+    .docs-list {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .docs-list .doc-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+        font-size: 13px;
+        color: var(--text-dark);
+        padding: 4px 0;
+    }
+
+    .docs-list .doc-item i {
+        color: var(--green-primary);
+        margin-top: 3px;
+        font-size: 11px;
+    }
+
     /* 404 */
     .not-found-state {
         background: white;
@@ -551,34 +673,53 @@
                 <div class="calc-row">
                     <label>Нархи манзил</label>
                     <div class="calc-input-group">
-                        <input type="number" id="calcPrice" placeholder="500000" min="0" step="1000" required>
+                        <input type="number" id="calcPrice" placeholder="500000" min="0" step="any" oninput="onPriceOrDownChange()" required>
                         <span class="suffix" id="calcPriceSuffix">сомонӣ</span>
                     </div>
                 </div>
 
                 <div class="calc-row">
-                    <label>Пешпардохт (% аз нархи манзил)</label>
+                    <label>Пешпардохт</label>
                     <div class="calc-input-group">
-                        <input type="number" id="calcDown" placeholder="30" min="0" max="100" step="0.1" required>
-                        <span class="suffix">%</span>
+                        <input type="number" id="calcDownAmount" placeholder="150000" min="0" step="any" oninput="onDownAmountChange()" required>
+                        <span class="suffix" id="calcDownSuffix">сомонӣ</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-medium);margin-top:4px;">
+                        <span><b id="calcDownPctShow">30</b>% аз нархи манзил</span>
+                        <span style="cursor:pointer;color:var(--green-primary);" onclick="resetDownToCondition()" title="Бозгашт ба пешпардохти бонк">
+                            <i class="fas fa-rotate"></i> аз нав
+                        </span>
                     </div>
                 </div>
 
                 <div class="calc-row">
-                    <label>Мӯҳлати қарз</label>
+                    <label>Маблағгузорӣ (қарзи бонк)</label>
                     <div class="calc-input-group">
-                        <input type="number" id="calcMonths" placeholder="120" min="1" step="1" required>
+                        <input type="number" id="calcLoanAmount" placeholder="350000" readonly style="background:#f3f6f4;cursor:not-allowed;">
+                        <span class="suffix" id="calcLoanSuffix">сомонӣ</span>
+                    </div>
+                </div>
+
+                <div class="calc-row">
+                    <label>Мӯҳлати пардохт</label>
+                    <div class="calc-input-group">
+                        <input type="number" id="calcMonths" placeholder="120" min="1" step="1" oninput="onMonthsChange()" required>
                         <span class="suffix">моҳ</span>
                     </div>
-                </div>
-
-                <div class="calc-row">
-                    <label>Фоизи солона</label>
-                    <div class="calc-input-group">
-                        <input type="number" id="calcRate" placeholder="20" min="0" step="0.01" required>
-                        <span class="suffix">%</span>
+                    <div class="months-chips" id="monthsChips">
+                        <span class="month-chip" onclick="setMonths(12)">12</span>
+                        <span class="month-chip" onclick="setMonths(24)">24</span>
+                        <span class="month-chip" onclick="setMonths(36)">36</span>
+                        <span class="month-chip" onclick="setMonths(48)">48</span>
+                        <span class="month-chip" onclick="setMonths(60)">60</span>
+                        <span class="month-chip" onclick="setMonths(72)">72</span>
+                        <span class="month-chip" onclick="setMonths(84)">84</span>
+                        <span class="month-chip" onclick="setMonths(96)">96</span>
                     </div>
                 </div>
+
+                <input type="hidden" id="calcRate" value="0">
+                <input type="hidden" id="calcDown" value="30">
 
                 <button type="submit" class="calc-btn">
                     <i class="fas fa-calculator"></i> Ҳисоб кардан
@@ -591,9 +732,21 @@
             </div>
 
             <div class="calc-result" id="calcResult">
-                <div class="calc-result-main">Пардохти моҳона</div>
-                <div class="calc-result-value" id="resultMonthly">0</div>
-                <div class="calc-result-grid">
+                <div class="result-cards-grid">
+                    <div class="result-card-big">
+                        <div class="result-card-label"><i class="fas fa-coins"></i> Пардохти барзиёд</div>
+                        <div class="result-card-value" id="resultOverpay">0</div>
+                    </div>
+                    <div class="result-card-big primary">
+                        <div class="result-card-label"><i class="fas fa-calendar-day"></i> Маблағи пардохти моҳона</div>
+                        <div class="result-card-value" id="resultMonthly">0</div>
+                    </div>
+                    <div class="result-card-big">
+                        <div class="result-card-label"><i class="fas fa-percent"></i> Фоизи солона</div>
+                        <div class="result-card-value" id="resultRate">0%</div>
+                    </div>
+                </div>
+                <div class="calc-result-grid" style="margin-top:14px;">
                     <div>
                         <div class="lbl">Маблағи қарз</div>
                         <div class="val" id="resultLoan">0</div>
@@ -607,8 +760,8 @@
                         <div class="val" id="resultTotal">0</div>
                     </div>
                     <div>
-                        <div class="lbl">Изофапардохт</div>
-                        <div class="val" id="resultOverpay">0</div>
+                        <div class="lbl">Фоизи моҳона</div>
+                        <div class="val" id="resultRateMonthly">0%</div>
                     </div>
                 </div>
             </div>
@@ -740,6 +893,25 @@ function renderConditions() {
         if (c.guarantor_required) extras.push('<i class="fas fa-user-check"></i> Зомин лозим аст');
         if (c.collateral_required) extras.push('<i class="fas fa-shield-halved"></i> Гарав лозим аст');
 
+        // Required documents block
+        let docsHtml = '';
+        const docsRaw = (c.required_documents || '').trim();
+        if (docsRaw) {
+            const docs = docsRaw.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+            if (docs.length) {
+                docsHtml = `
+                    <div class="docs-block">
+                        <div class="docs-block-title">
+                            <i class="fas fa-file-lines"></i> Ҳуҷҷатҳои лозима
+                        </div>
+                        <div class="docs-list">
+                            ${docs.map(d => `<div class="doc-item"><i class="fas fa-check-circle"></i> ${escapeHtml(d)}</div>`).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
         return `
             <div class="${cls}">
                 <div class="condition-header">
@@ -762,6 +934,7 @@ function renderConditions() {
                         ${c.extra_conditions ? `<div style="margin-top:6px;">${escapeHtml(c.extra_conditions)}</div>` : ''}
                     </div>
                 ` : ''}
+                ${docsHtml}
             </div>
         `;
     }).join('');
@@ -786,10 +959,19 @@ function onCurrencyChange() {
     if (isNaN(idx) || !bankConditions[idx]) return;
     activeCondition = bankConditions[idx];
 
-    document.getElementById('calcPriceSuffix').textContent =
-        activeCondition.currency === 'USD' ? '$' : 'сомонӣ';
+    const isUSD = activeCondition.currency === 'USD';
+    const symLabel = isUSD ? '$' : 'сомонӣ';
+    document.getElementById('calcPriceSuffix').textContent = symLabel;
+    document.getElementById('calcDownSuffix').textContent = symLabel;
+    document.getElementById('calcLoanSuffix').textContent = symLabel;
+
     document.getElementById('calcDown').value = activeCondition.down_payment_percent;
-    document.getElementById('calcMonths').value = Math.min(120, activeCondition.max_months);
+    document.getElementById('calcDownPctShow').textContent = activeCondition.down_payment_percent;
+
+    const monthsDefault = Math.min(120, activeCondition.max_months || 120);
+    document.getElementById('calcMonths').value = monthsDefault;
+    highlightActiveChip(monthsDefault);
+
     document.getElementById('calcRate').value = activeCondition.interest_yearly;
 
     if (!document.getElementById('calcPrice').value) {
@@ -799,8 +981,81 @@ function onCurrencyChange() {
         document.getElementById('calcPrice').value = suggest;
     }
 
+    // Recalculate downAmount based on price * down%
+    syncDownFromPercent();
+    recalcLoan();
+
     document.getElementById('calcResult').classList.remove('show');
     document.getElementById('calcWarning').classList.remove('show');
+}
+
+// === REACTIVE FIELDS ===
+
+// Sync downAmount = price * down% / 100
+function syncDownFromPercent() {
+    const price = parseFloat(document.getElementById('calcPrice').value) || 0;
+    const downPct = parseFloat(document.getElementById('calcDown').value) || 0;
+    if (price > 0 && downPct >= 0) {
+        const downAmount = price * downPct / 100;
+        document.getElementById('calcDownAmount').value = Math.round(downAmount * 100) / 100;
+    }
+}
+
+// When user changes price -> keep down% the same, recalc downAmount and loan
+function onPriceOrDownChange() {
+    syncDownFromPercent();
+    recalcLoan();
+}
+
+// When user types a custom downAmount -> derive new down% from it
+function onDownAmountChange() {
+    const price = parseFloat(document.getElementById('calcPrice').value) || 0;
+    const downAmount = parseFloat(document.getElementById('calcDownAmount').value) || 0;
+    if (price > 0) {
+        const pct = (downAmount / price) * 100;
+        const pctRounded = Math.round(pct * 100) / 100;
+        document.getElementById('calcDown').value = pctRounded;
+        document.getElementById('calcDownPctShow').textContent = pctRounded;
+    }
+    recalcLoan();
+}
+
+// Reset down to bank's default
+function resetDownToCondition() {
+    if (!activeCondition) return;
+    document.getElementById('calcDown').value = activeCondition.down_payment_percent;
+    document.getElementById('calcDownPctShow').textContent = activeCondition.down_payment_percent;
+    syncDownFromPercent();
+    recalcLoan();
+}
+
+// Recalculate loan = price - downAmount
+function recalcLoan() {
+    const price = parseFloat(document.getElementById('calcPrice').value) || 0;
+    const downAmount = parseFloat(document.getElementById('calcDownAmount').value) || 0;
+    const loan = Math.max(0, price - downAmount);
+    document.getElementById('calcLoanAmount').value = Math.round(loan * 100) / 100;
+}
+
+// Months chips
+function setMonths(m) {
+    document.getElementById('calcMonths').value = m;
+    highlightActiveChip(m);
+}
+
+function onMonthsChange() {
+    const m = parseInt(document.getElementById('calcMonths').value, 10) || 0;
+    highlightActiveChip(m);
+}
+
+function highlightActiveChip(m) {
+    document.querySelectorAll('#monthsChips .month-chip').forEach(chip => {
+        if (parseInt(chip.textContent, 10) === m) {
+            chip.classList.add('active');
+        } else {
+            chip.classList.remove('active');
+        }
+    });
 }
 
 function showWarning(text) {
@@ -822,14 +1077,18 @@ function calculateMortgage(e) {
     }
 
     const price = parseFloat(document.getElementById('calcPrice').value) || 0;
-    const downPct = parseFloat(document.getElementById('calcDown').value) || 0;
+    const downAmount = parseFloat(document.getElementById('calcDownAmount').value) || 0;
     const months = parseInt(document.getElementById('calcMonths').value, 10) || 0;
     const yearlyRate = parseFloat(document.getElementById('calcRate').value) || 0;
 
     if (price <= 0) { showWarning('Нархи манзилро ворид кунед'); return; }
     if (months <= 0) { showWarning('Мӯҳлатро ворид кунед'); return; }
+    if (downAmount > price) {
+        showWarning('Пешпардохт аз нархи манзил калонтар буда наметавонад');
+        return;
+    }
 
-    const downAmount = price * downPct / 100;
+    const downPct = price > 0 ? (downAmount / price) * 100 : 0;
     const loanAmount = price - downAmount;
 
     if (loanAmount <= 0) {
@@ -849,6 +1108,7 @@ function calculateMortgage(e) {
 
     const totalPayment = monthlyPayment * months;
     const overpayment = totalPayment - loanAmount;
+    const monthlyRatePct = yearlyRate / 12;
 
     // Validation against bank limits
     const warnings = [];
@@ -865,7 +1125,7 @@ function calculateMortgage(e) {
         warnings.push(`Мӯҳлат аз максимуми бонк (${activeCondition.max_months} моҳ) зиёдтар аст`);
     }
     if (downPct < activeCondition.down_payment_percent) {
-        warnings.push(`Пешпардохт бояд на камтар аз ${activeCondition.down_payment_percent}% бошад`);
+        warnings.push(`Пешпардохт бояд на камтар аз ${activeCondition.down_payment_percent}% бошад (айни ҳол ${(Math.round(downPct*10)/10)}%)`);
     }
     if (warnings.length) {
         showWarning(warnings.join(' • '));
@@ -873,11 +1133,16 @@ function calculateMortgage(e) {
 
     const sym = activeCondition.currency === 'USD' ? '$' : 'сом.';
 
-    document.getElementById('resultMonthly').textContent = `${fmt(monthlyPayment)} ${sym}`;
+    // Big result cards
+    document.getElementById('resultOverpay').textContent = `${fmt2(overpayment)} ${sym}`;
+    document.getElementById('resultMonthly').textContent = `${fmt2(monthlyPayment)} ${sym}`;
+    document.getElementById('resultRate').textContent = `${yearlyRate}%`;
+
+    // Detail grid
     document.getElementById('resultLoan').textContent = `${fmt(loanAmount)} ${sym}`;
     document.getElementById('resultDown').textContent = `${fmt(downAmount)} ${sym}`;
     document.getElementById('resultTotal').textContent = `${fmt(totalPayment + downAmount)} ${sym}`;
-    document.getElementById('resultOverpay').textContent = `${fmt(overpayment)} ${sym}`;
+    document.getElementById('resultRateMonthly').textContent = `${(Math.round(monthlyRatePct*100)/100)}%`;
 
     document.getElementById('calcResult').classList.add('show');
 }

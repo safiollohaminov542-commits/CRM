@@ -646,7 +646,7 @@
                     </div>
                     <div class="field">
                         <label>Фоизи солона *</label>
-                        <input type="number" id="condYearly" step="0.01" min="0" placeholder="20" required>
+                        <input type="number" id="condYearly" step="0.01" min="0" placeholder="20" required oninput="autoCalcMonthly()">
                     </div>
                     <div class="field">
                         <label>Фоизи моҳона *</label>
@@ -681,6 +681,10 @@
                             <input type="checkbox" id="condCollateral">
                             <label for="condCollateral">Гарав лозим аст</label>
                         </div>
+                    </div>
+                    <div class="field span2">
+                        <label>Ҳуҷҷатҳои лозима</label>
+                        <textarea id="condDocs" placeholder="Ҳар як ҳуҷҷатро дар сатри алоҳида нависед, масалан:&#10;Шиноснома&#10;Маълумотномаи кор&#10;Тасдиқи даромад"></textarea>
                     </div>
                     <div class="field span2">
                         <label>Шартҳои иловагӣ</label>
@@ -926,6 +930,19 @@ async function saveBank(e) {
 }
 
 // ============ CONDITIONS ============
+// Auto-calculate monthly interest from yearly (yearly / 12)
+// User can still override the monthly value manually.
+function autoCalcMonthly() {
+    const yEl = document.getElementById('condYearly');
+    const mEl = document.getElementById('condMonthly');
+    const yearly = parseFloat(yEl.value);
+    if (!isNaN(yearly) && yearly >= 0) {
+        const monthly = yearly / 12;
+        // Round to 2 decimals
+        mEl.value = (Math.round(monthly * 100) / 100).toFixed(2);
+    }
+}
+
 function openConditionModal(bankId, condition = null) {
     document.getElementById('conditionForm').reset();
     document.getElementById('conditionId').value = '';
@@ -944,6 +961,7 @@ function openConditionModal(bankId, condition = null) {
         document.getElementById('condDownPayment').value = condition.down_payment_percent || 30;
         document.getElementById('condGuarantor').checked = !!condition.guarantor_required;
         document.getElementById('condCollateral').checked = !!condition.collateral_required;
+        document.getElementById('condDocs').value = condition.required_documents || '';
         document.getElementById('condExtra').value = condition.extra_conditions || '';
     } else {
         document.getElementById('conditionModalTitle').textContent = 'Илова кардани шарт';
@@ -998,6 +1016,7 @@ async function saveCondition(e) {
         down_payment_percent: document.getElementById('condDownPayment').value,
         guarantor_required: document.getElementById('condGuarantor').checked,
         collateral_required: document.getElementById('condCollateral').checked,
+        required_documents: document.getElementById('condDocs').value,
         extra_conditions: document.getElementById('condExtra').value
     };
 

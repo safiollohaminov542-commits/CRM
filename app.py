@@ -6165,11 +6165,21 @@ def init_ipoteka_rasrochka_tables():
             guarantor_required INTEGER DEFAULT 0,
             collateral_required INTEGER DEFAULT 0,
             extra_conditions TEXT,
+            required_documents TEXT,
             created_date TEXT,
             updated_date TEXT,
             FOREIGN KEY (bank_id) REFERENCES banks (id) ON DELETE CASCADE
         )
     ''')
+
+    # Migration: илова кардани сутуни required_documents агар вуҷуд надошта бошад
+    try:
+        cursor.execute("PRAGMA table_info(mortgage_conditions)")
+        cols = [row[1] for row in cursor.fetchall()]
+        if 'required_documents' not in cols:
+            cursor.execute("ALTER TABLE mortgage_conditions ADD COLUMN required_documents TEXT")
+    except Exception as _e:
+        print(f"⚠️ migration mortgage_conditions.required_documents: {_e}")
     
     # ===== Ҷадвали Объектҳои рассрочка =====
     cursor.execute('''
@@ -6524,8 +6534,8 @@ def api_create_bank_condition(bank_id):
                 bank_id, currency, interest_yearly, interest_monthly,
                 min_amount, max_amount, min_months, max_months,
                 down_payment_percent, guarantor_required, collateral_required,
-                extra_conditions, created_date, updated_date
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                extra_conditions, required_documents, created_date, updated_date
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
             bank_id,
             data.get('currency', 'TJS'),
@@ -6539,6 +6549,7 @@ def api_create_bank_condition(bank_id):
             1 if data.get('guarantor_required') else 0,
             1 if data.get('collateral_required') else 0,
             data.get('extra_conditions', ''),
+            data.get('required_documents', ''),
             datetime.now().isoformat(),
             datetime.now().isoformat()
         ))
@@ -6563,7 +6574,7 @@ def api_update_bank_condition(condition_id):
                 currency = ?, interest_yearly = ?, interest_monthly = ?,
                 min_amount = ?, max_amount = ?, min_months = ?, max_months = ?,
                 down_payment_percent = ?, guarantor_required = ?, collateral_required = ?,
-                extra_conditions = ?, updated_date = ?
+                extra_conditions = ?, required_documents = ?, updated_date = ?
             WHERE id = ?
         ''', (
             data.get('currency', 'TJS'),
@@ -6577,6 +6588,7 @@ def api_update_bank_condition(condition_id):
             1 if data.get('guarantor_required') else 0,
             1 if data.get('collateral_required') else 0,
             data.get('extra_conditions', ''),
+            data.get('required_documents', ''),
             datetime.now().isoformat(),
             condition_id
         ))
